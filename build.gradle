@@ -1,0 +1,45 @@
+plugins {
+	id 'org.springframework.boot' version '2.2.1.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+	id 'java'
+}
+
+group = 'mx.vazquez'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+configurations {
+	developmentOnly
+	runtimeClasspath {
+		extendsFrom developmentOnly
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	
+	
+	compile "io.github.resilience4j:resilience4j-circuitbreaker:0.16.0"
+  	compile "io.github.resilience4j:resilience4j-ratelimiter:0.16.0"
+  	compile "io.github.resilience4j:resilience4j-retry:0.16.0"
+  	compile "io.github.resilience4j:resilience4j-bulkhead:0.16.0"
+  	compile "io.github.resilience4j:resilience4j-cache:0.16.0"
+  	compile "io.github.resilience4j:resilience4j-timelimiter:0.16.0"
+	
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	
+	def excludeSpringBootStarterLogging = { exclude(group: 'org.springframework.boot', module: 'spring-boot-starter-logging') }
+	compile('io.github.resilience4j:resilience4j-spring-boot2:0.17.0', excludeSpringBootStarterLogging)
+	
+}
+
+test {
+	useJUnitPlatform()
+}
