@@ -25,6 +25,9 @@ import mx.vazquez.service.HelloService;
 @RestController
 @RequestMapping("/resilience")
 public class HelloController {
+	
+	@Autowired
+	private HelloService helloService;
 
 	private CircuitBreakerConfig circuitBreakerConfig;
 	private TimeLimiterConfig limiterConfig;
@@ -43,9 +46,6 @@ public class HelloController {
 
 		retry = Retry.of("my", retryConfig);
 	}
-
-	@Autowired
-	private HelloService helloService;
 	
 	
 	@GetMapping(path = "/resilience")
