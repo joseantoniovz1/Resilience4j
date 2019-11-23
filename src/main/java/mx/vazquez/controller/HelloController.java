@@ -5,12 +5,12 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -33,49 +33,33 @@ public class HelloController {
 
 	public HelloController() {
 		circuitBreakerConfig = CircuitBreakerConfig.custom().failureRateThreshold(50)
-				.recordExceptions(IOException.class, TimeoutException.class).build();
+				.recordExceptions(IOException.class, RuntimeException.class).build();
 
-		limiterConfig = TimeLimiterConfig.custom().timeoutDuration(Duration.ofMillis(10000)).cancelRunningFuture(false)
+		limiterConfig = TimeLimiterConfig.custom().timeoutDuration(Duration.ofMillis(10000)).cancelRunningFuture(true)
 				.build();
 
-		retryConfig = RetryConfig.custom().maxAttempts(3).retryOnException(e -> e instanceof RuntimeException)
-				.retryExceptions(RuntimeException.class, TimeoutException.class, ExecutionException.class).build();
+		retryConfig = RetryConfig.custom().maxAttempts(3).retryOnException(e -> e instanceof NullPointerException)
+				.retryExceptions(ExecutionException.class, NullPointerException.class).build();
 
 		retry = Retry.of("my", retryConfig);
 	}
 
 	@Autowired
 	private HelloService helloService;
-
-	@GetMapping(path = "/hello")
-	public String helloWorld() {
-
-		CircuitBreaker circuitBreaker = CircuitBreaker.of("helloController", circuitBreakerConfig);
-
-		Supplier<String> result = () -> helloService.getGreetings("Example");
-
-		result = Retry.decorateSupplier(retry, result);
-		Supplier<String> getCircuitBreaker = CircuitBreaker.decorateSupplier(circuitBreaker, result);
-
-
-		return Try.ofSupplier(getCircuitBreaker).recover((throwable) -> getFallback()).get();
-	}
 	
 	
-	
-	@GetMapping(path = "/hola")
-	public String holaMundo() {
+	@GetMapping(path = "/resilience")
+	public String getResilience(@RequestParam(name = "type", defaultValue = "default") String type) {
 
 		CircuitBreaker circuitBreaker = CircuitBreaker.of("helloController", circuitBreakerConfig);
 		TimeLimiter timeLimiter = TimeLimiter.of(limiterConfig);
 
-		Supplier<CompletableFuture<String>> futureSupplier = () -> CompletableFuture.supplyAsync(() -> helloService.getGreetings("Example"));
+		Supplier<CompletableFuture<String>> futureSupplier = () -> CompletableFuture.supplyAsync(() -> helloService.getGreetings(type));
 		
-		futureSupplier = Retry.decorateSupplier(retry, futureSupplier);
 		futureSupplier = CircuitBreaker.decorateSupplier(circuitBreaker, futureSupplier);
 		
 		Callable<String> callable = TimeLimiter.decorateFutureSupplier(timeLimiter, futureSupplier);
-
+		callable = Retry.decorateCallable(retry, callable::call);
 
 		return Try.ofCallable(callable).recover((throwable) -> getFallback()).get();
 	}
